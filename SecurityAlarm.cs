@@ -10,7 +10,7 @@ public class SecurityAlarm : MonoBehaviour
     private float _maxVolume = 1;
     private float _minVolume = 0;
     private float _volumeStep = 0.1f;
-    private float _delay = 0.25f;
+    private float _delay = 0.1f;
 
     private void Start()
     {
@@ -19,13 +19,13 @@ public class SecurityAlarm : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponent<Key>() == false)
+        if (other.TryGetComponent<Key>(out Key key) == false)
             StartAlarm();
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.GetComponent<Key>() == false)
+        if (other.TryGetComponent<Key>(out Key key) == false)
             StopAlarm();
     }
 
@@ -34,33 +34,38 @@ public class SecurityAlarm : MonoBehaviour
         if (_audioSource.isPlaying == false)
         {
             _audioSource.Play();
-            StartCoroutine(IncreaseVolumeSmoothly(_minVolume, _maxVolume));
+            StartCoroutine(IncreaseVolumeSmoothly());
         }
     }
 
     private void StopAlarm()
     {
-        StartCoroutine(IncreaseVolumeSmoothly(_maxVolume, _minVolume));
-
-        if (_audioSource.volume == _minVolume)
-            _audioSource.Stop();
+        StartCoroutine(DecreaseVolumeSmoothlyUntilStop());
     }
 
-    private IEnumerator IncreaseVolumeSmoothly(float startVolume, float targetVolume)
+    private IEnumerator IncreaseVolumeSmoothly()
     {
         var wait = new WaitForSeconds(_delay);
-        float currentVolume;
+        _audioSource.volume = _minVolume;
 
-        _audioSource.volume = startVolume;
-
-        while (_audioSource.volume != targetVolume)
+        while (_audioSource.volume != _maxVolume)
         {
-            currentVolume = _audioSource.volume;
-            _audioSource.volume = Mathf.MoveTowards(currentVolume, targetVolume, _volumeStep);
+            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, _maxVolume, _volumeStep);
+            yield return wait;
+        }
+    }
 
+    private IEnumerator DecreaseVolumeSmoothlyUntilStop()
+    {
+        var wait = new WaitForSeconds(_delay);
+        _audioSource.volume = _maxVolume;
+
+        while (_audioSource.volume != _minVolume)
+        {
+            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, _minVolume, _volumeStep);
             yield return wait;
         }
 
-        _audioSource.volume = targetVolume;
+        _audioSource.Stop();
     }
 }
